@@ -1,8 +1,11 @@
 package cs455.scaling.threadpool;
 
+import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import cs455.scaling.tasks.AddTask;
+import cs455.scaling.tasks.SleepTask;
 import cs455.scaling.tasks.Task;
 
 /**
@@ -10,37 +13,54 @@ import cs455.scaling.tasks.Task;
  */
 public class ThreadPoolManager
 {
-    private final ArrayList<Worker>             _workers;
-    private final ArrayList<Thread>             _workerThreads;
-    private final ConcurrentLinkedQueue<Task>   _workQueue;
+    private final List<Worker>                  _workers;
+    private final List<Thread>                  _workerThreads;
+    private final CustomQueue<Task>             _workQueue;
 
     public ThreadPoolManager(int numThreads)
     {
         //housekeeping
         _workers = new ArrayList<Worker>();
         _workerThreads = new ArrayList<Thread>();
-        _workQueue  = new ConcurrentLinkedQueue<Task>();
+        _workQueue  = new SafeQueue<Task>();
 
-        for(int i = 0; i < numThreads; ++i)
+        for(Integer i = 0; i < numThreads; ++i)
         {
             //create worker
-            Worker worker = new Worker();
+            Worker worker = new Worker(_workQueue, i.toString());
+            _workers.add(worker);
             _workerThreads.add(new Thread(worker));
 
             //perhaps more housekeeping
         }
     }
 
-    private void startWorkerThreads()
+    private void runWorkerThreads()
     {
         for(Thread thread : _workerThreads)
         {
-            thread.run();
+            thread.start();
         }
     }
 
     private void addTaskToQueue(Task task)
     {
-        _workQueue.add(task);
+        _workQueue.enqueue(task);
+    }
+
+    //entry point used to test thread pool
+    public static void main(String[] args)
+    {
+        ThreadPoolManager tpm = new ThreadPoolManager(10);
+        tpm.runWorkerThreads();
+
+        for(int i = 0; i < 100; ++i)
+        {
+            tpm.addTaskToQueue(new AddTask(i, i + 1));
+        }
+        System.out.println("Starting task A");
+        tpm.addTaskToQueue(new AddTask(1, 5));
+        System.out.println("Starting task B");
+        tpm.addTaskToQueue(new SleepTask(1000));
     }
 }
