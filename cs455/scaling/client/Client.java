@@ -1,7 +1,6 @@
 package cs455.scaling.client;
 
-import cs455.scaling.Node;
-import cs455.scaling.tasks.SleepTask;
+import cs455.scaling.node.Node;
 
 import java.io.IOException;
 import java.net.InetAddress;

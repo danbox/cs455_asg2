@@ -1,6 +1,6 @@
 package cs455.scaling.server;
 
-import java.nio.channels.SocketChannel;
+import java.nio.channels.Channel;
 
 /**
  * @author danbox
@@ -13,18 +13,18 @@ public class SocketChannelRequest
     public static final int _READ       = 3;
     public static final int _WRITE      = 4;
 
-    private final SocketChannel   _socketChannel;
+    private final Channel         _channel;
     private final int             _type;
 
-    public SocketChannelRequest(SocketChannel socketChannel, int type)
+    public SocketChannelRequest(Channel socketChannel, int type)
     {
-        _socketChannel = socketChannel;
+        _channel = socketChannel;
         _type = type;
     }
 
-    public SocketChannel getSocketChannel()
+    public Channel getChannel()
     {
-        return _socketChannel;
+        return _channel;
     }
 
     public int getType()

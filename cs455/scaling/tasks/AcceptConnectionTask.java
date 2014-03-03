@@ -19,15 +19,15 @@ import java.nio.channels.SocketChannel;
  */
 public class AcceptConnectionTask implements Task
 {
-    private final Server                                _server;
-    private final SelectionKey                          _key;
+    private final Server        _server;
+    private final SocketChannel _socketChannel;
 
-    private final String                                _TYPE = "AcceptConnectionTask";
+    private final String        _TYPE = "AcceptConnectionTask";
 
-    public AcceptConnectionTask(Server server, SelectionKey key)
+    public AcceptConnectionTask(Server server, SocketChannel socketChannel)
     {
         _server = server;
-        _key = key;
+        _socketChannel = socketChannel;
     }
 
     @Override
@@ -35,17 +35,16 @@ public class AcceptConnectionTask implements Task
     {
         try
         {
-            ServerSocketChannel serverSocketChannel = (ServerSocketChannel)_key.channel();
-            SocketChannel socketChannel = serverSocketChannel.accept();
-            ClientInfo client = new ClientInfo(socketChannel);
-            _server.addClient(socketChannel, client);
+            ClientInfo client = new ClientInfo(_socketChannel);
+            _server.addClient(_socketChannel, client);
 
             System.out.println("Accepting incoming connection");
 
-            socketChannel.configureBlocking(false);
+            _socketChannel.configureBlocking(false);
 
-            _server.addRequest(new SocketChannelRequest(socketChannel, SocketChannelRequest._REGISTER));
+            _server.addRequest(new SocketChannelRequest(_socketChannel, SocketChannelRequest._REGISTER));
 
+            _server.wakeupSelector();
         }catch(IOException ioe)
         {
             ioe.printStackTrace();

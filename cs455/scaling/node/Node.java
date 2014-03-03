@@ -1,4 +1,4 @@
-package cs455.scaling;
+package cs455.scaling.node;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -15,8 +15,8 @@ import java.security.NoSuchAlgorithmException;
  */
 public abstract class Node implements Runnable
 {
-    protected final int     _BUFSIZE = 8129;
-    protected Selector      _selector;
+    public static final int      _BUFSIZE = 8129;
+    protected Selector              _selector;
 
     @Override
     public abstract void run();

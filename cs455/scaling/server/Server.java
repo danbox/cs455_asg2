@@ -1,12 +1,9 @@
 package cs455.scaling.server;
 
 
-import cs455.scaling.Node;
-import cs455.scaling.client.Client;
+import cs455.scaling.node.Node;
 import cs455.scaling.datastructures.CustomMap;
-import cs455.scaling.datastructures.CustomQueue;
 import cs455.scaling.datastructures.SafeMap;
-import cs455.scaling.datastructures.SafeQueue;
 import cs455.scaling.tasks.AcceptConnectionTask;
 import cs455.scaling.threadpool.ThreadPoolManager;
 
@@ -14,10 +11,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
@@ -27,16 +21,18 @@ import java.util.*;
 
 public class Server extends Node
 {
-    private final CustomMap<SocketChannel, ClientInfo>      _clients;
+    private final CustomMap<Channel, ClientInfo>            _clients;
     private final ThreadPoolManager                         _threadPoolManager;
     private final List<SocketChannelRequest>                _pendingRequests;
+    private final Set<Channel>                              _inProgressChannels;
 
     public Server(InetAddress hostAddress, int port, int threadPoolSize) throws IOException
     {
         _selector = initSelector(hostAddress, port);
-        _clients = new SafeMap<SocketChannel, ClientInfo>();
+        _clients = new SafeMap<Channel, ClientInfo>();
         _threadPoolManager = new ThreadPoolManager(threadPoolSize);
         _pendingRequests = new LinkedList<SocketChannelRequest>();
+        _inProgressChannels = new HashSet<Channel>();
     }
 
     @Override
@@ -53,11 +49,13 @@ public class Server extends Node
                 {
                     for(SocketChannelRequest request : _pendingRequests)
                     {
+                        SocketChannel socketChannel = (SocketChannel)request.getChannel();
                         switch(request.getType())
                         {
                             case SocketChannelRequest._REGISTER:
                                 //register the socket channel to the selector
-                                request.getSocketChannel().register(_selector, SelectionKey.OP_READ, _clients.get(request.getSocketChannel()));
+
+                                socketChannel.register(_selector, SelectionKey.OP_READ, _clients.get(request.getChannel()));
                                 break;
 
                             case SocketChannelRequest._DEREGISTER:
@@ -67,18 +65,22 @@ public class Server extends Node
 
                             case SocketChannelRequest._READ:
                                 //set the interest to read
-                                request.getSocketChannel().keyFor(_selector).interestOps(SelectionKey.OP_READ);
+                                socketChannel.keyFor(_selector).interestOps(SelectionKey.OP_READ);
                                 break;
 
                             case SocketChannelRequest._WRITE:
                                 //set the interest to write
-                                request.getSocketChannel().keyFor(_selector).interestOps(SelectionKey.OP_WRITE);
+                                socketChannel.keyFor(_selector).interestOps(SelectionKey.OP_WRITE);
                                 break;
                         }
                     }
 
                     //clear all pending requests
                     _pendingRequests.clear();
+                    synchronized(_inProgressChannels)
+                    {
+                        _inProgressChannels.clear();
+                    }
                 }
 
                 int selectedKeys = _selector.select();
@@ -94,6 +96,14 @@ public class Server extends Node
                 {
                     SelectionKey key = keys.next();
                     keys.remove();
+
+                    synchronized(_inProgressChannels)
+                    {
+                        if(_inProgressChannels.contains(key.channel()))
+                        {
+                            continue;
+                        }
+                    }
 
                     if(!key.isValid())
                     {
@@ -151,14 +161,12 @@ public class Server extends Node
 
     private void accept(SelectionKey key) throws IOException
     {
-        _threadPoolManager.addTaskToQueue(new AcceptConnectionTask(this, key));
-
-        try
+        ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
+        SocketChannel socketChannel = serverSocketChannel.accept();
+        _threadPoolManager.addTaskToQueue(new AcceptConnectionTask(this, socketChannel));
+        synchronized(_inProgressChannels)
         {
-            Thread.sleep(1000);
-        }catch(InterruptedException ie)
-        {
-            ie.printStackTrace();
+            _inProgressChannels.add(socketChannel);
         }
 
     }
@@ -221,6 +229,11 @@ public class Server extends Node
         }
     }
 
+    public void wakeupSelector()
+    {
+        _selector.wakeup();
+    }
+
     //server entry point
     public static void main(String[] args)
     {
@@ -229,7 +242,7 @@ public class Server extends Node
         int threadPoolSize = 0;
         if(args.length != 2) //invalid number of arguments
         {
-            System.err.println("Invalid arguments\nUsagserver.startServer();e: java cs455.scaling.server.Server <port-num> <thread-pool-size>");
+            System.err.println("Invalid arguments\nUsage: java cs455.scaling.server.Server <port-num> <thread-pool-size>");
             System.exit(1);
         }else
         {
