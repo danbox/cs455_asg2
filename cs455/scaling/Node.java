@@ -17,7 +17,6 @@ public abstract class Node implements Runnable
 {
     protected final int     _BUFSIZE = 8129;
     protected Selector      _selector;
-//    protected ByteBuffer    _buffer;
 
     @Override
     public abstract void run();

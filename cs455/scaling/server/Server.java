@@ -2,6 +2,13 @@ package cs455.scaling.server;
 
 
 import cs455.scaling.Node;
+import cs455.scaling.client.Client;
+import cs455.scaling.datastructures.CustomMap;
+import cs455.scaling.datastructures.CustomQueue;
+import cs455.scaling.datastructures.SafeMap;
+import cs455.scaling.datastructures.SafeQueue;
+import cs455.scaling.tasks.AcceptConnectionTask;
+import cs455.scaling.threadpool.ThreadPoolManager;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -20,13 +27,16 @@ import java.util.*;
 
 public class Server extends Node
 {
-    private final Map<SocketChannel, ClientInfo>     _clients;
+    private final CustomMap<SocketChannel, ClientInfo>      _clients;
+    private final ThreadPoolManager                         _threadPoolManager;
+    private final List<SocketChannelRequest>                _pendingRequests;
 
-    public Server(InetAddress hostAddress, int port) throws IOException
+    public Server(InetAddress hostAddress, int port, int threadPoolSize) throws IOException
     {
         _selector = initSelector(hostAddress, port);
-        _clients = new HashMap<SocketChannel, ClientInfo>();
-//        _buffer = ByteBuffer.allocate(_BUFSIZE);
+        _clients = new SafeMap<SocketChannel, ClientInfo>();
+        _threadPoolManager = new ThreadPoolManager(threadPoolSize);
+        _pendingRequests = new LinkedList<SocketChannelRequest>();
     }
 
     @Override
@@ -38,6 +48,38 @@ public class Server extends Node
             for(;;)
             {
                 //check to see if server should be terminated
+
+                synchronized(_pendingRequests)
+                {
+                    for(SocketChannelRequest request : _pendingRequests)
+                    {
+                        switch(request.getType())
+                        {
+                            case SocketChannelRequest._REGISTER:
+                                //register the socket channel to the selector
+                                request.getSocketChannel().register(_selector, SelectionKey.OP_READ, _clients.get(request.getSocketChannel()));
+                                break;
+
+                            case SocketChannelRequest._DEREGISTER:
+                                //deregister the socket channel from the selector
+                                System.out.println("Sorry this isn't implemented yet...");
+                                break;
+
+                            case SocketChannelRequest._READ:
+                                //set the interest to read
+                                request.getSocketChannel().keyFor(_selector).interestOps(SelectionKey.OP_READ);
+                                break;
+
+                            case SocketChannelRequest._WRITE:
+                                //set the interest to write
+                                request.getSocketChannel().keyFor(_selector).interestOps(SelectionKey.OP_WRITE);
+                                break;
+                        }
+                    }
+
+                    //clear all pending requests
+                    _pendingRequests.clear();
+                }
 
                 int selectedKeys = _selector.select();
                 if(selectedKeys == 0)
@@ -109,25 +151,27 @@ public class Server extends Node
 
     private void accept(SelectionKey key) throws IOException
     {
-        ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
-        SocketChannel socketChannel = serverSocketChannel.accept();
-        ClientInfo client = new ClientInfo(socketChannel);
-        _clients.put(socketChannel, client);
+        _threadPoolManager.addTaskToQueue(new AcceptConnectionTask(this, key));
 
-        System.out.println("Accepting incoming connection");
+        try
+        {
+            Thread.sleep(1000);
+        }catch(InterruptedException ie)
+        {
+            ie.printStackTrace();
+        }
 
-        socketChannel.configureBlocking(false);
-        socketChannel.register(_selector, SelectionKey.OP_READ, client);
     }
 
     @Override
     //computes the hash of the read data packet and adds that the pending write list to client
     protected void handleResponse(SelectionKey key, byte[] bufferBytes)
     {
+        SocketChannel channel = (SocketChannel)key.channel();
         try
         {
             byte[] hash = SHA1FromBytes(bufferBytes).getBytes();
-            _clients.get(key.channel()).addPendingWrite(hash);
+            _clients.get(channel).addPendingWrite(hash);
 
 
         }catch(NoSuchAlgorithmException nsae)
@@ -144,7 +188,7 @@ public class Server extends Node
         SocketChannel channel = (SocketChannel)key.channel();
 
         //get list of pending writes, write out on the channel
-        for(byte[] data : _clients.get(key.channel()).getPendingWriteList())
+        for(byte[] data : _clients.get(channel).getPendingWriteList())
         {
             ByteBuffer buffer = ByteBuffer.wrap(data);
             channel.write(buffer);
@@ -152,10 +196,29 @@ public class Server extends Node
         }
 
         //clear the pending writes for client
-        _clients.get(key.channel()).clearPendingWrites();
+        _clients.get(channel).clearPendingWrites();
 
         //set key to read interest
         key.interestOps(SelectionKey.OP_READ);
+    }
+
+    //starts the worker threads in the pool
+    private void startThreadPool()
+    {
+        _threadPoolManager.runWorkerThreads();
+    }
+
+    public void addClient(SocketChannel socketChannel, ClientInfo clientInfo)
+    {
+        _clients.put(socketChannel, clientInfo);
+    }
+
+    public void addRequest(SocketChannelRequest request)
+    {
+        synchronized(_pendingRequests)
+        {
+            _pendingRequests.add(request);
+        }
     }
 
     //server entry point
@@ -163,20 +226,24 @@ public class Server extends Node
     {
         //get port number
         int port = 0;
-        if(args.length != 1) //invalid number of arguments
+        int threadPoolSize = 0;
+        if(args.length != 2) //invalid number of arguments
         {
-            System.err.println("Invalid arguments\nUsagserver.startServer();e: java cs455.scaling.server.Server <port-num>");
+            System.err.println("Invalid arguments\nUsagserver.startServer();e: java cs455.scaling.server.Server <port-num> <thread-pool-size>");
             System.exit(1);
         }else
         {
             port = Integer.parseInt(args[0]);
+            threadPoolSize = Integer.parseInt(args[1]);
         }
 
         //start server and assign to wildcard address and specified port
         try
         {
 //            new Thread(new Server(null, port));
-            new Server(null, port).run();
+            Server server = new Server(null, port, threadPoolSize);
+            server.startThreadPool();
+            server.run();
         }catch(IOException ioe)
         {
             ioe.printStackTrace();

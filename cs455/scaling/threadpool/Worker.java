@@ -1,5 +1,6 @@
 package cs455.scaling.threadpool;
 
+import cs455.scaling.datastructures.CustomQueue;
 import cs455.scaling.tasks.*;
 /**
  * @author Dan Boxler
@@ -23,11 +24,11 @@ public class Worker implements Runnable
             //housekeeping
 
             Task task = _workQueue.dequeue();
-            System.out.println("Task taken by: " + _name);
+            System.out.println("Task " + task.getType() + " taken by: " + _name);
 
             task.run();
 
-            System.out.println("Task completed by: " + _name);
+            System.out.println("Task " + task.getType() + " completed by: " + _name);
 
 
             //more housekeeping

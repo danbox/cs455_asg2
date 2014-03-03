@@ -1,4 +1,4 @@
-package cs455.scaling.threadpool;
+package cs455.scaling.datastructures;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -17,7 +17,7 @@ public class SafeQueue<E> implements CustomQueue<E>
         _queue.add(e);
 
         //notify all threads that an item has been added to the queue
-        notifyAll();;
+        notifyAll();
     }
 
     @Override

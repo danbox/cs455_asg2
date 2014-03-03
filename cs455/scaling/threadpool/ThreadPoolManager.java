@@ -2,8 +2,9 @@ package cs455.scaling.threadpool;
 
 import java.util.List;
 import java.util.ArrayList;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
+import cs455.scaling.datastructures.CustomQueue;
+import cs455.scaling.datastructures.SafeQueue;
 import cs455.scaling.tasks.AddTask;
 import cs455.scaling.tasks.SleepTask;
 import cs455.scaling.tasks.Task;
@@ -15,11 +16,10 @@ public class ThreadPoolManager
 {
     private final List<Worker>                  _workers;
     private final List<Thread>                  _workerThreads;
-    private final CustomQueue<Task>             _workQueue;
+    private final CustomQueue<Task> _workQueue;
 
     public ThreadPoolManager(int numThreads)
     {
-        //housekeeping
         _workers = new ArrayList<Worker>();
         _workerThreads = new ArrayList<Thread>();
         _workQueue  = new SafeQueue<Task>();
@@ -30,12 +30,10 @@ public class ThreadPoolManager
             Worker worker = new Worker(_workQueue, i.toString());
             _workers.add(worker);
             _workerThreads.add(new Thread(worker));
-
-            //perhaps more housekeeping
         }
     }
 
-    private void runWorkerThreads()
+    public void runWorkerThreads()
     {
         for(Thread thread : _workerThreads)
         {
@@ -43,7 +41,7 @@ public class ThreadPoolManager
         }
     }
 
-    private void addTaskToQueue(Task task)
+    public void addTaskToQueue(Task task)
     {
         _workQueue.enqueue(task);
     }

@@ -1,4 +1,4 @@
-package cs455.scaling.threadpool;
+package cs455.scaling.datastructures;
 
 /**
  * @author danbox
