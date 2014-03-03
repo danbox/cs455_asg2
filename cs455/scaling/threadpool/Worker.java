@@ -34,8 +34,4 @@ public class Worker implements Runnable
         }
     }
 
-//    public void setCurrentTask(Task task)
-//    {
-//        _currenttask = task;
-//    }
 }

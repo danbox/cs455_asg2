@@ -1,47 +1,39 @@
 package cs455.scaling.server;
 
 
+import cs455.scaling.Node;
+
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 /**
  * @author  Dan Boxler
  */
 
-public class Server
+public class Server extends Node
 {
-    private final int                               _BUFFSIZE = 8192;
-    private final int                               _port;
-    private Selector                                _selector;
-    private final Map<SelectionKey, ClientInfo>     _clients;
+    private final Map<SocketChannel, ClientInfo>     _clients;
 
-    public Server(int port)
+    public Server(InetAddress hostAddress, int port) throws IOException
     {
-        _port = port;
-        _clients = new HashMap<SelectionKey, ClientInfo>();
+        _selector = initSelector(hostAddress, port);
+        _clients = new HashMap<SocketChannel, ClientInfo>();
+//        _buffer = ByteBuffer.allocate(_BUFSIZE);
     }
 
-    private void startServer(int port)
+    @Override
+    public void run()
     {
-        _selector = null;
-        ServerSocketChannel  serverChannel = null;
         try
         {
-            _selector = Selector.open();
-
-            //set up ServerSocketChannel
-            serverChannel = ServerSocketChannel.open();
-            serverChannel.configureBlocking(false);
-            serverChannel.socket().bind(new InetSocketAddress(_port));
-            serverChannel.register(_selector, SelectionKey.OP_ACCEPT);
-
             //main loop
             for(;;)
             {
@@ -58,30 +50,33 @@ public class Server
                 Iterator<SelectionKey> keys = _selector.selectedKeys().iterator();
                 while(keys.hasNext())
                 {
-                    SelectionKey selectionKey = keys.next();
+                    SelectionKey key = keys.next();
                     keys.remove();
 
-                    if(!selectionKey.isValid())
+                    if(!key.isValid())
                     {
+                        //selection key is not valid, so skip it
                         continue;
                     }
 
                     //check what are the interests that are active
-                    if(selectionKey.isAcceptable())
+                    if(key.isAcceptable())
                     {
                         //a connection is ready to be completed
-                        accept(selectionKey);
+                        accept(key);
                         continue;
                     }
-                    if(selectionKey.isReadable())
+                    if(key.isReadable())
                     {
                         //can read
-
+                        read(key);
+                        continue;
                     }
-                    if(selectionKey.isWritable())
+                    if(key.isWritable())
                     {
                         //can write
-
+                        write(key);
+                        continue;
                     }
                 }
             }
@@ -92,11 +87,32 @@ public class Server
         }
     }
 
+    private Selector initSelector(InetAddress hostAddress, int port) throws IOException
+    {
+        //grabs open selector
+        Selector selector = initSelector();
+
+        //set up ServerSocketChannel
+        ServerSocketChannel serverChannel = ServerSocketChannel.open();
+
+        //configure non-blocking
+        serverChannel.configureBlocking(false);
+
+        //bind to host address and specified portSelector.open();
+        serverChannel.socket().bind(new InetSocketAddress(hostAddress, port));
+
+        //register server sockSelector selector = Selector.open();et channel to selector and set to accept
+        serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+
+        return selector;
+    }
+
     private void accept(SelectionKey key) throws IOException
     {
         ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
         SocketChannel socketChannel = serverSocketChannel.accept();
-        _clients.put(key, new ClientInfo(socketChannel));
+        ClientInfo client = new ClientInfo(socketChannel);
+        _clients.put(socketChannel, client);
 
         System.out.println("Accepting incoming connection");
 
@@ -104,63 +120,67 @@ public class Server
         socketChannel.register(_selector, SelectionKey.OP_READ, client);
     }
 
-    private void read(SelectionKey key) throws IOException
+    @Override
+    //computes the hash of the read data packet and adds that the pending write list to client
+    protected void handleResponse(SelectionKey key, byte[] bufferBytes)
     {
-        SocketChannel channel = (SocketChannel)key.channel();
-
-        ByteBuffer buffer = ByteBuffer.allocate(_BUFFSIZE);
-
-        int read = 0;
         try
         {
-            while(buffer.hasRemaining() && read != -1)
-            {
-                read = channel.read(buffer);
-            }
-        }catch(IOException ioe)
+            byte[] hash = SHA1FromBytes(bufferBytes).getBytes();
+            _clients.get(key.channel()).addPendingWrite(hash);
+
+
+        }catch(NoSuchAlgorithmException nsae)
         {
-            //abnormal termination
-            //server.disconnect(key);
-            return;
+            nsae.printStackTrace();
         }
-
-        if(read == -1)
-        {
-            //connection was terminated by the client
-            //server.disconnect(key);
-            return;
-        }
-
-        buffer.flip();
-        byte[] bufferBytes = new byte[_BUFFSIZE];
-        buffer.get(bufferBytes);
-
-        //...
-        byte[] hash = Arrays.hashCode(bufferBytes);
-
-        _clients.get(key).addPendingWrite(hash);
-
-        key.interestOps(SelectionKey.OP_WRITE);
     }
 
-    private void write(SelectionKey key) throws IOException
+    @Override
+    //sends all pending writes to client associated with key
+    protected void write(SelectionKey key) throws IOException
     {
+        //get channel from key
         SocketChannel channel = (SocketChannel)key.channel();
 
         //get list of pending writes, write out on the channel
-        for(byte[] data : _clients.get(key).getPendingWriteList())
+        for(byte[] data : _clients.get(key.channel()).getPendingWriteList())
         {
             ByteBuffer buffer = ByteBuffer.wrap(data);
             channel.write(buffer);
+            System.out.println("Writing: " + data.toString());
         }
 
-        _clients.get(key).clearPendingWrites();
+        //clear the pending writes for client
+        _clients.get(key.channel()).clearPendingWrites();
+
+        //set key to read interest
         key.interestOps(SelectionKey.OP_READ);
     }
 
-    //program entry point
+    //server entry point
     public static void main(String[] args)
     {
+        //get port number
+        int port = 0;
+        if(args.length != 1) //invalid number of arguments
+        {
+            System.err.println("Invalid arguments\nUsagserver.startServer();e: java cs455.scaling.server.Server <port-num>");
+            System.exit(1);
+        }else
+        {
+            port = Integer.parseInt(args[0]);
+        }
+
+        //start server and assign to wildcard address and specified port
+        try
+        {
+//            new Thread(new Server(null, port));
+            new Server(null, port).run();
+        }catch(IOException ioe)
+        {
+            ioe.printStackTrace();
+        }
 
     }
 }
