@@ -29,56 +29,54 @@ public class ReadTask implements Task
     @Override
     public void run()
     {
+
+
+        ByteBuffer buffer = ByteBuffer.allocate(Node._BUFSIZE);
+        int read = 0;
         try
         {
-            ClientInfo client = new ClientInfo(_socketChannel);
-            _server.addClient(_socketChannel, client);
-
-            System.out.println("Accepting incoming connection");
-
-            _socketChannel.configureBlocking(false);
-
-            _server.addRequest(new SocketChannelRequest(_socketChannel, SocketChannelRequest._REGISTER));
-
-            _server.wakeupSelector();
-
-            ByteBuffer buffer = ByteBuffer.allocate(Node._BUFSIZE);
-            int read = 0;
-            try
+            do
             {
-//            while(buffer.hasRemaining() && read != -1)
-//            {
-//                System.out.println(read);
-//                read = channel.read(buffer);
-//            }
+                System.out.println(read);
                 read = _socketChannel.read(buffer);
-            }catch(IOException ioe)
-            {
-                //abnormal termination
+            }while(buffer.hasRemaining() && read > 0);
+//            read = _socketChannel.read(buffer);
+        }catch(IOException ioe) //TODO: terminate the connection
+        {
+            //abnormal termination
 //                key.channel().close();
 //                key.cancel();
-                return;
-            }
+            return;
+        }
 
-            if(read == -1)
-            {
-                //connection was terminated by the client
+        if(read == -1)
+        {
+            //connection was terminated by the client
 //                key.channel().close();
 //                key.cancel();
-                return;
-            }
+            return;
+        }
 
+        if(read > 0)
+        {
             buffer.flip();
             byte[] bufferBytes = new byte[read];
             buffer.get(bufferBytes);
 
-            System.out.println("Read: " + bufferBytes.toString());
+            System.out.println("Read: " + bufferBytes);
 
+            //handle response
+            synchronized(_socketChannel)
+            {
+                _server.handleResponse(_socketChannel, bufferBytes);
+            }
 
-        }catch(IOException ioe)
-        {
-            ioe.printStackTrace();
+            //set interest to write
+            _server.addRequest(new SocketChannelRequest(_socketChannel, SocketChannelRequest._WRITE));
+
+            _server.wakeupSelector();
         }
+
         System.out.println("Exiting task");
     }
 

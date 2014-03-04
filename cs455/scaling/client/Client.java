@@ -121,7 +121,7 @@ public class Client extends Node
 
     @Override
     //checks to see if hashed response from server matches any pending hashes
-    protected void handleResponse(SelectionKey key, byte[] bufferBytes)
+    public void handleResponse(SocketChannel socketChannel, byte[] bufferBytes)
     {
         String hash = new String(bufferBytes);
         if(_pendingHashes.contains(hash))
@@ -130,7 +130,7 @@ public class Client extends Node
             _pendingHashes.remove(hash);
         }else //data was corrupted
         {
-            System.out.println("Data was corrupted");
+            System.out.println("Data was corrupted. Received " + hash);
         }
     }
 

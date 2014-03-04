@@ -35,24 +35,33 @@ public class ClientInfo
         return _port;
     }
 
-    protected synchronized void addPendingWrite(byte[] dataToWrite)
+    protected void addPendingWrite(byte[] dataToWrite)
     {
-        _pendingWriteList.add(dataToWrite);
+        synchronized(_pendingWriteList)
+        {
+            _pendingWriteList.add(dataToWrite);
+        }
     }
 
-    protected synchronized void clearPendingWrites()
+    protected void clearPendingWrites()
     {
-        _pendingWriteList.clear();
+        synchronized(_pendingWriteList)
+        {
+            _pendingWriteList.clear();
+        }
     }
 
     //performs a deep copy on the pending write list
     protected List<byte[]> getPendingWriteList()
     {
-        List<byte[]> newList = new LinkedList<byte[]>();
-        for(byte[] write : _pendingWriteList)
+        synchronized(_pendingWriteList)
         {
-            newList.add(write.clone());
+            List<byte[]> newList = new LinkedList<byte[]>();
+            for(byte[] write : _pendingWriteList)
+            {
+                newList.add(write.clone());
+            }
+            return newList;
         }
-        return newList;
     }
 }

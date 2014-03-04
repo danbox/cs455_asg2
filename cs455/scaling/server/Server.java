@@ -1,10 +1,13 @@
 package cs455.scaling.server;
 
 
+import com.sun.corba.se.spi.activation._LocatorImplBase;
 import cs455.scaling.node.Node;
 import cs455.scaling.datastructures.CustomMap;
 import cs455.scaling.datastructures.SafeMap;
 import cs455.scaling.tasks.AcceptConnectionTask;
+import cs455.scaling.tasks.ReadTask;
+import cs455.scaling.tasks.WriteTask;
 import cs455.scaling.threadpool.ThreadPoolManager;
 
 import java.io.IOException;
@@ -163,23 +166,37 @@ public class Server extends Node
     {
         ServerSocketChannel serverSocketChannel = (ServerSocketChannel)key.channel();
         SocketChannel socketChannel = serverSocketChannel.accept();
-        _threadPoolManager.addTaskToQueue(new AcceptConnectionTask(this, socketChannel));
         synchronized(_inProgressChannels)
         {
             _inProgressChannels.add(socketChannel);
         }
+        _threadPoolManager.addTaskToQueue(new AcceptConnectionTask(this, socketChannel));
+
 
     }
 
     @Override
-    //computes the hash of the read data packet and adds that the pending write list to client
-    protected void handleResponse(SelectionKey key, byte[] bufferBytes)
+    protected void read(SelectionKey key) throws IOException
     {
-        SocketChannel channel = (SocketChannel)key.channel();
+        SocketChannel socketChannel = (SocketChannel)key.channel();
+        synchronized (_inProgressChannels)
+        {
+            _inProgressChannels.add(socketChannel);
+        }
+        _threadPoolManager.addTaskToQueue(new ReadTask(this, socketChannel));
+    }
+
+    @Override
+    //computes the hash of the read data packet and adds that the pending write list to client
+    public void handleResponse(SocketChannel socketChannel, byte[] bufferBytes)
+    {
         try
         {
             byte[] hash = SHA1FromBytes(bufferBytes).getBytes();
-            _clients.get(channel).addPendingWrite(hash);
+            synchronized(_clients)
+            {
+                _clients.get(socketChannel).addPendingWrite(hash);
+            }
 
 
         }catch(NoSuchAlgorithmException nsae)
@@ -192,22 +209,13 @@ public class Server extends Node
     //sends all pending writes to client associated with key
     protected void write(SelectionKey key) throws IOException
     {
-        //get channel from key
-        SocketChannel channel = (SocketChannel)key.channel();
+        SocketChannel socketChannel = (SocketChannel) key.channel();
 
-        //get list of pending writes, write out on the channel
-        for(byte[] data : _clients.get(channel).getPendingWriteList())
+        synchronized(_inProgressChannels)
         {
-            ByteBuffer buffer = ByteBuffer.wrap(data);
-            channel.write(buffer);
-            System.out.println("Writing: " + data.toString());
+            _inProgressChannels.add(socketChannel);
         }
-
-        //clear the pending writes for client
-        _clients.get(channel).clearPendingWrites();
-
-        //set key to read interest
-        key.interestOps(SelectionKey.OP_READ);
+        _threadPoolManager.addTaskToQueue(new WriteTask(this, socketChannel));
     }
 
     //starts the worker threads in the pool
@@ -232,6 +240,22 @@ public class Server extends Node
     public void wakeupSelector()
     {
         _selector.wakeup();
+    }
+
+    public List<byte[]> getClientPendingWriteList(SocketChannel socketChannel)
+    {
+        synchronized(_clients)
+        {
+            return _clients.get(socketChannel).getPendingWriteList();
+        }
+    }
+
+    public void clearClientPendingWritesList(SocketChannel socketChannel)
+    {
+        synchronized(_clients)
+        {
+            _clients.get(socketChannel).clearPendingWrites();
+        }
     }
 
     //server entry point

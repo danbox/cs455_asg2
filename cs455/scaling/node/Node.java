@@ -60,12 +60,12 @@ public abstract class Node implements Runnable
         buffer.get(bufferBytes);
 
         System.out.println("Read: " + bufferBytes.toString());
-        handleResponse(key, bufferBytes);
+        handleResponse(channel, bufferBytes);
 
         key.interestOps(SelectionKey.OP_WRITE);
     }
 
-    protected abstract void handleResponse(SelectionKey key, byte[] bufferBytes);
+    public abstract void handleResponse(SocketChannel socketChannel, byte[] bufferBytes);
 
     protected abstract void write(SelectionKey key) throws IOException;
 
