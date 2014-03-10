@@ -45,7 +45,7 @@ public class ReadTask implements Task
                 System.out.println(read);
                 read = socketChannel.read(buffer);
                 System.out.println("REMAINING: " + buffer.remaining());
-            }while(buffer.hasRemaining() && read > 0);
+            }while(buffer.hasRemaining() && read != 1);
 //            read = _socketChannel.read(buffer);
         }catch(IOException ioe) //TODO: terminate the connection
         {
@@ -63,8 +63,8 @@ public class ReadTask implements Task
             return;
         }
 
-        if(read > 0)
-        {
+//        if(read > 0)
+//        {
             buffer.flip();
             byte[] bufferBytes = new byte[read];
             buffer.get(bufferBytes);
@@ -78,7 +78,7 @@ public class ReadTask implements Task
             }
 
 
-        }
+//        }
 
 
         ClientInfo client = (ClientInfo)_key.attachment();
