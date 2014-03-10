@@ -7,29 +7,34 @@ import cs455.scaling.server.SocketChannelRequest;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 /**
- * @author danbox
- * @date 3/2/14.
+ * @author Dan Boxler
  */
 public class ReadTask implements Task
 {
-    private final Server _server;
-    private final SocketChannel _socketChannel;
+    private final Server        _server;
+    private final SelectionKey  _key;
 
     private final String        _TYPE = "ReadTask";
 
-    public ReadTask(Server server, SocketChannel socketChannel)
+    public ReadTask(Server server, SelectionKey key)
     {
         _server = server;
-        _socketChannel = socketChannel;
+        _key = key;
+        ClientInfo client = (ClientInfo)_key.attachment();
+        synchronized(client)
+        {
+            client.setReading(true);
+        }
     }
 
     @Override
     public void run()
     {
-
+        SocketChannel socketChannel = (SocketChannel)_key.channel();
 
         ByteBuffer buffer = ByteBuffer.allocate(Node._BUFSIZE);
         int read = 0;
@@ -38,7 +43,8 @@ public class ReadTask implements Task
             do
             {
                 System.out.println(read);
-                read = _socketChannel.read(buffer);
+                read = socketChannel.read(buffer);
+                System.out.println("REMAINING: " + buffer.remaining());
             }while(buffer.hasRemaining() && read > 0);
 //            read = _socketChannel.read(buffer);
         }catch(IOException ioe) //TODO: terminate the connection
@@ -66,15 +72,22 @@ public class ReadTask implements Task
             System.out.println("Read: " + bufferBytes);
 
             //handle response
-            synchronized(_socketChannel)
+            synchronized(socketChannel)
             {
-                _server.handleResponse(_socketChannel, bufferBytes);
+                _server.handleResponse(socketChannel, bufferBytes);
             }
 
             //set interest to write
-            _server.addRequest(new SocketChannelRequest(_socketChannel, SocketChannelRequest._WRITE));
+            _server.addRequest(new SocketChannelRequest(socketChannel, SocketChannelRequest._WRITE));
 
             _server.wakeupSelector();
+        }
+
+        ClientInfo client = (ClientInfo)_key.attachment();
+
+        synchronized(client)
+        {
+            client.setReading(false);
         }
 
         System.out.println("Exiting task");

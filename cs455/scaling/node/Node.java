@@ -15,7 +15,7 @@ import java.security.NoSuchAlgorithmException;
  */
 public abstract class Node implements Runnable
 {
-    public static final int      _BUFSIZE = 8129;
+    public static final int         _BUFSIZE = 8129;
     protected Selector              _selector;
 
     @Override

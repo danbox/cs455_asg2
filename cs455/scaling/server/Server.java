@@ -179,11 +179,15 @@ public class Server extends Node
     protected void read(SelectionKey key) throws IOException
     {
         SocketChannel socketChannel = (SocketChannel)key.channel();
-        synchronized (_inProgressChannels)
+        ClientInfo client = (ClientInfo)key.attachment();
+        if(!client.isReading())
         {
-            _inProgressChannels.add(socketChannel);
+            synchronized (_inProgressChannels)
+            {
+                _inProgressChannels.add(socketChannel);
+            }
+            _threadPoolManager.addTaskToQueue(new ReadTask(this, key));
         }
-        _threadPoolManager.addTaskToQueue(new ReadTask(this, socketChannel));
     }
 
     @Override
@@ -210,12 +214,16 @@ public class Server extends Node
     protected void write(SelectionKey key) throws IOException
     {
         SocketChannel socketChannel = (SocketChannel) key.channel();
+        ClientInfo client = (ClientInfo)key.attachment();
 
-        synchronized(_inProgressChannels)
+        if(!client.isWriting())
         {
-            _inProgressChannels.add(socketChannel);
+            synchronized(_inProgressChannels)
+            {
+                _inProgressChannels.add(socketChannel);
+            }
+            _threadPoolManager.addTaskToQueue(new WriteTask(this, key));
         }
-        _threadPoolManager.addTaskToQueue(new WriteTask(this, socketChannel));
     }
 
     //starts the worker threads in the pool

@@ -15,6 +15,8 @@ public class ClientInfo
     private final InetAddress   _hostname;
     private final int           _port;
     private final List<byte[]>  _pendingWriteList;
+    private boolean             _isReading;
+    private boolean             _isWriting;
 
     public ClientInfo(Channel channel)
     {
@@ -23,6 +25,8 @@ public class ClientInfo
         _hostname = socket.getInetAddress();
         _port = socket.getPort();
         _pendingWriteList = new LinkedList<byte[]>();
+        _isReading = false;
+        _isWriting = false;
     }
 
     protected InetAddress getHostname()
@@ -64,4 +68,25 @@ public class ClientInfo
             return newList;
         }
     }
+
+    public void setWriting(boolean isWriting)
+    {
+        _isWriting = isWriting;
+    }
+
+    public boolean isWriting()
+    {
+        return _isWriting;
+    }
+
+    public void setReading(boolean isReading)
+    {
+        _isReading = isReading;
+    }
+
+    public boolean isReading()
+    {
+        return _isReading;
+    }
+
 }
