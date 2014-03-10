@@ -77,18 +77,23 @@ public class ReadTask implements Task
                 _server.handleResponse(socketChannel, bufferBytes);
             }
 
-            //set interest to write
-            _server.addRequest(new SocketChannelRequest(socketChannel, SocketChannelRequest._WRITE));
 
-            _server.wakeupSelector();
         }
+
 
         ClientInfo client = (ClientInfo)_key.attachment();
-
         synchronized(client)
-        {
-            client.setReading(false);
-        }
+    {
+        client.setReading(false);
+    }
+        //set interest to write
+        _server.addRequest(new SocketChannelRequest(socketChannel, SocketChannelRequest._WRITE));
+
+        _server.wakeupSelector();
+
+
+
+
 
         System.out.println("Exiting task");
     }
