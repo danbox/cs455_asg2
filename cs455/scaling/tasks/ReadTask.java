@@ -40,12 +40,12 @@ public class ReadTask implements Task
         int read = 0;
         try
         {
-            do
+            while(buffer.hasRemaining() && read != 1)
             {
                 System.out.println(read);
                 read = socketChannel.read(buffer);
                 System.out.println("REMAINING: " + buffer.remaining());
-            }while(buffer.hasRemaining() && read != 1);
+            }
 //            read = _socketChannel.read(buffer);
         }catch(IOException ioe) //TODO: terminate the connection
         {
