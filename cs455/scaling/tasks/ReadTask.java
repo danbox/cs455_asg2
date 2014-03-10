@@ -36,6 +36,8 @@ public class ReadTask implements Task
     {
         SocketChannel socketChannel = (SocketChannel)_key.channel();
 
+        System.out.println("Beginning read from: " + socketChannel.socket().getInetAddress().getCanonicalHostName());
+
         ByteBuffer buffer = ByteBuffer.allocate(Node._BUFSIZE);
         int read = 0;
         try
@@ -77,6 +79,7 @@ public class ReadTask implements Task
                 _server.handleResponse(socketChannel, bufferBytes);
             }
 
+        System.out.println("Ending read from: " + socketChannel.socket().getInetAddress().getCanonicalHostName());
 
 //        }
 
