@@ -44,8 +44,9 @@ public class ReadTask implements Task
         {
             while(buffer.hasRemaining() && read != 1)
             {
-                System.out.println(read);
+                Thread.sleep(100);
                 read = socketChannel.read(buffer);
+                System.out.println(read);
                 System.out.println("REMAINING: " + buffer.remaining());
             }
 //            read = _socketChannel.read(buffer);
@@ -55,6 +56,9 @@ public class ReadTask implements Task
 //                key.channel().close();
 //                key.cancel();
             return;
+        }catch(InterruptedException ie)
+        {
+            ie.printStackTrace();
         }
 
         if(read == -1)

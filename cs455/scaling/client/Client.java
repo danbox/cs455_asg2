@@ -150,7 +150,8 @@ public class Client extends Node
         //generate random 8kb byte array
         byte[] data = new byte[_BUFSIZE];
         new Random().nextBytes(data);
-        System.out.println("Generated: " + data.toString());
+
+        System.out.println("Generated: " + data);
 
         //store hash in pending hashes
         String hash = null;
