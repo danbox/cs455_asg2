@@ -151,8 +151,6 @@ public class Client extends Node
         byte[] data = new byte[_BUFSIZE];
         new Random().nextBytes(data);
 
-        System.out.println("Generated: " + data);
-
         //store hash in pending hashes
         String hash = null;
         try
@@ -202,7 +200,6 @@ public class Client extends Node
         //create new client
         try
         {
-//            new Thread(new Client(serverHostname, serverListeningPort, messageRate));
             new Client(serverHostname, serverListeningPort, messageRate).run();
         }catch(IOException ioe)
         {

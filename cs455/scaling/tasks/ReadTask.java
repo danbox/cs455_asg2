@@ -42,14 +42,13 @@ public class ReadTask implements Task
         int read = 0;
         try
         {
-            while(buffer.hasRemaining() && read != 1)
+            while(buffer.hasRemaining() && read != 1) //TODO: try to minimize sleeping in ReadTask
             {
                 Thread.sleep(100);
                 read = socketChannel.read(buffer);
                 System.out.println(read);
                 System.out.println("REMAINING: " + buffer.remaining());
             }
-//            read = _socketChannel.read(buffer);
         }catch(IOException ioe) //TODO: terminate the connection
         {
             //abnormal termination
@@ -69,19 +68,17 @@ public class ReadTask implements Task
             return;
         }
 
-//        if(read > 0)
-//        {
-            buffer.flip();
-            byte[] bufferBytes = new byte[read];
-            buffer.get(bufferBytes);
+        buffer.flip();
+        byte[] bufferBytes = new byte[read];
+        buffer.get(bufferBytes);
 
-            System.out.println("Read: " + bufferBytes);
+        System.out.println("Read: " + bufferBytes);
 
-            //handle response
-            synchronized(socketChannel)
-            {
-                _server.handleResponse(socketChannel, bufferBytes);
-            }
+        //handle response
+        synchronized(socketChannel)
+        {
+            _server.handleResponse(socketChannel, bufferBytes);
+        }
 
         System.out.println("Ending read from: " + socketChannel.socket().getInetAddress().getCanonicalHostName());
 
@@ -90,17 +87,15 @@ public class ReadTask implements Task
 
         ClientInfo client = (ClientInfo)_key.attachment();
         synchronized(client)
-    {
-        client.setReading(false);
-    }
+        {
+            client.setReading(false);
+        }
+
         //set interest to write
         _server.addRequest(new SocketChannelRequest(socketChannel, SocketChannelRequest._WRITE));
 
+        //wakeup the selector
         _server.wakeupSelector();
-
-
-
-
 
         System.out.println("Exiting task");
     }

@@ -44,7 +44,7 @@ public class WriteTask implements Task
                 {
                     ByteBuffer buffer = ByteBuffer.wrap(data);
                     socketChannel.write(buffer);
-                    System.out.println("Writing: " + new String(data));
+                    System.out.println("Writing hash: " + new String(data));
                 }
 
                 //clear the pending writes for client

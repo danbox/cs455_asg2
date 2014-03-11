@@ -1,7 +1,6 @@
 package cs455.scaling.server;
 
 
-import com.sun.corba.se.spi.activation._LocatorImplBase;
 import cs455.scaling.node.Node;
 import cs455.scaling.datastructures.CustomMap;
 import cs455.scaling.datastructures.SafeMap;
@@ -13,7 +12,6 @@ import cs455.scaling.threadpool.ThreadPoolManager;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -285,7 +283,6 @@ public class Server extends Node
         //start server and assign to wildcard address and specified port
         try
         {
-//            new Thread(new Server(null, port));
             Server server = new Server(null, port, threadPoolSize);
             server.startThreadPool();
             server.run();
