@@ -44,7 +44,7 @@ public class ReadTask implements Task
         {
             while(buffer.hasRemaining() && read != -1)
             {
-                Thread.sleep(5);
+                Thread.sleep(10);
                 read = socketChannel.read(buffer);
             }
         }catch(IOException ioe) //TODO: terminate the connection
