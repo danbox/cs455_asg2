@@ -42,9 +42,8 @@ public class ReadTask implements Task
         int read = 0;
         try
         {
-            while(buffer.hasRemaining() && read != 1)
+            while(buffer.hasRemaining() && read != -1)
             {
-                Thread.sleep(5);
                 read = socketChannel.read(buffer);
                 System.out.println(read);
                 System.out.println("REMAINING: " + buffer.remaining());
@@ -52,27 +51,34 @@ public class ReadTask implements Task
         }catch(IOException ioe) //TODO: terminate the connection
         {
             //abnormal termination
-//                key.channel().close();
-//                key.cancel();
+            try
+            {
+                _key.channel().close();
+                _key.cancel();
+            }catch(IOException ioe2)
+            {
+                //do nothing
+            }
             return;
-        }catch(InterruptedException ie)
-        {
-            ie.printStackTrace();
         }
 
         if(read == -1)
         {
             //connection was terminated by the client
-//                key.channel().close();
-//                key.cancel();
+            try
+            {
+                _key.channel().close();
+                _key.cancel();
+            }catch(IOException ioe)
+            {
+                //do nothing
+            }
             return;
         }
 
             buffer.flip();
             byte[] bufferBytes = new byte[read];
             buffer.get(bufferBytes);
-
-            System.out.println("Read: " + bufferBytes);
 
             //handle response
             synchronized(socketChannel)
@@ -81,8 +87,6 @@ public class ReadTask implements Task
             }
 
         System.out.println("Ending read from: " + socketChannel.socket().getInetAddress().getCanonicalHostName());
-
-
 
         ClientInfo client = (ClientInfo)_key.attachment();
         synchronized(client)
@@ -93,10 +97,6 @@ public class ReadTask implements Task
         _server.addRequest(new SocketChannelRequest(socketChannel, SocketChannelRequest._WRITE));
 
         _server.wakeupSelector();
-
-
-
-
 
         System.out.println("Exiting task");
     }
