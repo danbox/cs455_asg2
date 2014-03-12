@@ -42,6 +42,7 @@ public class ReadTask implements Task
         int read = 0;
         try
         {
+            Thread.sleep(5);
             while(buffer.hasRemaining() && read != -1)
             {
                 read = socketChannel.read(buffer);
@@ -60,6 +61,9 @@ public class ReadTask implements Task
                 //do nothing
             }
             return;
+        }catch(InterruptedException ie)
+        {
+            ie.printStackTrace();
         }
 
         if(read == -1)
