@@ -42,9 +42,9 @@ public class ReadTask implements Task
         int read = 0;
         try
         {
-            Thread.sleep(5);
             while(buffer.hasRemaining() && read != -1)
             {
+                Thread.sleep(5);
                 read = socketChannel.read(buffer);
                 System.out.println(read);
                 System.out.println("REMAINING: " + buffer.remaining());
