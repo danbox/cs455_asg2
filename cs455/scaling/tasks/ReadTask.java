@@ -42,9 +42,9 @@ public class ReadTask implements Task
         int read = 0;
         try
         {
-            while(buffer.hasRemaining() && read != 1) //TODO: try to minimize sleeping in ReadTask
+            while(buffer.hasRemaining() && read != 1)
             {
-                Thread.sleep(100);
+                Thread.sleep(5);
                 read = socketChannel.read(buffer);
                 System.out.println(read);
                 System.out.println("REMAINING: " + buffer.remaining());
@@ -68,34 +68,35 @@ public class ReadTask implements Task
             return;
         }
 
-        buffer.flip();
-        byte[] bufferBytes = new byte[read];
-        buffer.get(bufferBytes);
+            buffer.flip();
+            byte[] bufferBytes = new byte[read];
+            buffer.get(bufferBytes);
 
-        System.out.println("Read: " + bufferBytes);
+            System.out.println("Read: " + bufferBytes);
 
-        //handle response
-        synchronized(socketChannel)
-        {
-            _server.handleResponse(socketChannel, bufferBytes);
-        }
+            //handle response
+            synchronized(socketChannel)
+            {
+                _server.handleResponse(socketChannel, bufferBytes);
+            }
 
         System.out.println("Ending read from: " + socketChannel.socket().getInetAddress().getCanonicalHostName());
 
-//        }
 
 
         ClientInfo client = (ClientInfo)_key.attachment();
         synchronized(client)
-        {
-            client.setReading(false);
-        }
-
+    {
+        client.setReading(false);
+    }
         //set interest to write
         _server.addRequest(new SocketChannelRequest(socketChannel, SocketChannelRequest._WRITE));
 
-        //wakeup the selector
         _server.wakeupSelector();
+
+
+
+
 
         System.out.println("Exiting task");
     }
