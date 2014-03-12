@@ -61,7 +61,6 @@ public class WriteTask implements Task
                 client.setWriting(false);
             }
 
-            System.out.println("Exiting task");
         }catch(IOException ioe)
         {
             ioe.printStackTrace();

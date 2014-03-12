@@ -12,6 +12,7 @@ import cs455.scaling.threadpool.ThreadPoolManager;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.channels.*;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -278,6 +279,14 @@ public class Server extends Node
         {
             port = Integer.parseInt(args[0]);
             threadPoolSize = Integer.parseInt(args[1]);
+        }
+
+        try
+        {
+            System.out.println("Server started on " + InetAddress.getLocalHost().getCanonicalHostName() + " using port number " + port);
+        }catch(UnknownHostException uhe)
+        {
+            uhe.printStackTrace();
         }
 
         //start server and assign to wildcard address and specified port

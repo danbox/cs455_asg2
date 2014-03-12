@@ -59,7 +59,6 @@ public abstract class Node implements Runnable
         byte[] bufferBytes = new byte[read];
         buffer.get(bufferBytes);
 
-        System.out.println("Read: " + bufferBytes.toString());
         handleResponse(channel, bufferBytes);
 
         key.interestOps(SelectionKey.OP_WRITE);

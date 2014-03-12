@@ -46,8 +46,6 @@ public class ReadTask implements Task
             {
                 Thread.sleep(5);
                 read = socketChannel.read(buffer);
-                System.out.println(read);
-                System.out.println("REMAINING: " + buffer.remaining());
             }
         }catch(IOException ioe) //TODO: terminate the connection
         {
